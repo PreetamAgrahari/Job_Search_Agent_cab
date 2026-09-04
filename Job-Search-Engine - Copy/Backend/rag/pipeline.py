@@ -1,3 +1,4 @@
+import json
 from typing import List
 
 from Backend.rag.parser import ResumeParser
@@ -188,72 +189,119 @@ class ResumeRAGPipeline:
         return response
 
     # --------------------------------------------------
-    # STEP 4: Resume Analysis
+    # STEP 5: Structured Resume Analysis
     # --------------------------------------------------
 
-    def analyze_resume(self) -> str:
+    def analyze_resume(self) -> dict:
         """
-        Analyze the complete uploaded resume.
+        Analyze the complete uploaded resume and
+        return structured JSON data.
         """
 
-        # Get ALL resume chunks instead of semantic search
+        # Get all resume chunks
         resume_chunks = self.vector_store.get_all_documents()
 
         if not resume_chunks:
-            return "No resume found. Please upload a resume first."
+            return {
+                "overall_score": 0,
+                "ats_score": 0,
+                "summary": "No resume found. Please upload a resume first.",
+                "strengths": [],
+                "weaknesses": [],
+                "technical_skills": [],
+                "missing_skills": [],
+                "recommended_roles": [],
+                "project_analysis": [],
+                "improvement_suggestions": []
+            }
 
-        # Combine all resume chunks
+        # Combine complete resume
         resume_context = "\n\n".join(resume_chunks)
 
-        # Build dedicated analysis prompt
         prompt = f"""
-You are an expert ATS Resume Analyzer and Career Advisor.
+You are an expert ATS Resume Analyzer.
 
-Analyze the following complete resume carefully.
+Analyze the resume below and return ONLY valid JSON.
 
 RESUME:
 --------------------
 {resume_context}
 --------------------
 
-Provide a detailed analysis in the following format:
+Return the response EXACTLY in this JSON format:
 
-## 1. Overall Resume Score
-Give a score out of 100 and briefly explain the score.
+{{
+    "overall_score": 0,
+    "ats_score": 0,
+    "summary": "",
+    "strengths": [],
+    "weaknesses": [],
+    "technical_skills": [],
+    "missing_skills": [],
+    "recommended_roles": [],
+    "project_analysis": [
+        {{
+            "project_name": "",
+            "evaluation": "",
+            "suggestions": []
+        }}
+    ],
+    "improvement_suggestions": []
+}}
 
-## 2. Resume Strengths
-List the strongest parts of the resume.
+Rules:
 
-## 3. Resume Weaknesses
-Identify missing information, weak sections, or areas that need improvement.
+1. overall_score must be an integer between 0 and 100.
+2. ats_score must be an integer between 0 and 100.
+3. summary should contain a short professional evaluation.
+4. strengths must be a list of strings.
+5. weaknesses must be a list of strings.
+6. technical_skills must contain skills found in the resume.
+7. missing_skills must contain recommended skills.
+8. recommended_roles must contain suitable job roles.
+9. project_analysis must analyze each project.
+10. improvement_suggestions must contain actionable suggestions.
+11. Return ONLY JSON.
+12. Do not use Markdown.
+13. Do not include ```json or ```.
 
-## 4. Technical Skills Identified
-List all technical skills found in the resume.
-
-## 5. Missing or Recommended Skills
-Suggest important skills based on the candidate's profile.
-
-## 6. Recommended Job Roles
-Suggest suitable job roles.
-
-## 7. ATS Analysis
-Explain how ATS-friendly the resume is and identify missing keywords.
-
-## 8. Project Analysis
-Evaluate the projects and suggest improvements.
-
-## 9. Resume Improvement Suggestions
-Give clear actionable suggestions to improve the resume.
-
-Important rules:
-- Only analyze information present in the resume.
-- Do not say "I couldn't find information" unless the resume genuinely lacks the information.
-- If something is missing, clearly mention that it is missing and suggest an improvement.
-- Be constructive and professional.
 """
 
+        # Get Gemini response
         response = self.gemini.generate_response(prompt)
 
-        return response
+        # Remove accidental markdown formatting
+        response = response.strip()
 
-    
+        if response.startswith("```json"):
+            response = response.replace("```json", "", 1)
+
+        if response.startswith("```"):
+            response = response.replace("```", "", 1)
+
+        if response.endswith("```"):
+            response = response[:-3]
+
+        response = response.strip()
+
+        try:
+            analysis = json.loads(response)
+
+        except json.JSONDecodeError:
+
+            # Fallback if Gemini returns invalid JSON
+            return {
+                "overall_score": 0,
+                "ats_score": 0,
+                "summary": "Unable to generate structured analysis.",
+                "strengths": [],
+                "weaknesses": [],
+                "technical_skills": [],
+                "missing_skills": [],
+                "recommended_roles": [],
+                "project_analysis": [],
+                "improvement_suggestions": [],
+                "raw_analysis": response
+            }
+
+        return analysis
