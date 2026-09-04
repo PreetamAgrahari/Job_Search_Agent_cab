@@ -160,39 +160,47 @@ async def analyze_resume():
     try:
 
         prompt = """
-You are an expert AI Resume Analyzer.
+        You are an expert AI Resume Analyzer.
+        
+        Analyze the uploaded resume and provide a detailed analysis.
+        
+        Return the response in the following format:
+        
+        OVERALL_SCORE: Give a score out of 100
+        
+        STRENGTHS:
+        
+        - List strengths
+        
+        WEAKNESSES:
+        
+        - List weaknesses
+        
+        TECHNICAL_SKILLS:
+        
+        - List technical skills
+        
+        SKILLS_TO_IMPROVE:
+        
+        - List skills that should be improved
+        
+        RECOMMENDED_JOB_ROLES:
+        
+        - Suggest suitable job roles
+        
+        ATS_SUGGESTIONS:
+        
+        - Give ATS optimization suggestions
+        
+        RESUME_IMPROVEMENTS:
+        
+        - Give actionable suggestions to improve the resume.
+        
+        Be honest, professional, and specific.
+        
+        """
 
-Analyze the uploaded resume and provide a detailed analysis.
-
-Return the response in the following format:
-
-OVERALL_SCORE: Give a score out of 100
-
-STRENGTHS:
-- List strengths
-
-WEAKNESSES:
-- List weaknesses
-
-TECHNICAL_SKILLS:
-- List technical skills
-
-SKILLS_TO_IMPROVE:
-- List skills that should be improved
-
-RECOMMENDED_JOB_ROLES:
-- Suggest suitable job roles
-
-ATS_SUGGESTIONS:
-- Give ATS optimization suggestions
-
-RESUME_IMPROVEMENTS:
-- Give actionable suggestions to improve the resume.
-
-Be honest, professional, and specific.
-"""
-
-        analysis = pipeline.analyze_resume(prompt)
+        analysis = pipeline.analyze_resume()
 
         return {
             "success": True,
