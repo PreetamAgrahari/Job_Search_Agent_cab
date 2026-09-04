@@ -60,3 +60,16 @@ class ResumeVectorStore:
         self.client.delete_collection(
             self.collection.name
         )
+
+    def get_all_documents(self) -> List[str]:
+            """
+            Return all stored resume chunks.
+            """
+    
+            results = self.collection.get(
+                include=["documents"]
+            )
+    
+            documents = results.get("documents", [])
+    
+            return documents
