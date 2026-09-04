@@ -187,47 +187,70 @@ class ResumeRAGPipeline:
 
         return response
 
-        # --------------------------------------------------
+    # --------------------------------------------------
     # STEP 4: Resume Analysis
     # --------------------------------------------------
 
     def analyze_resume(self) -> str:
         """
-        Analyze the uploaded resume using
-        the stored resume context.
+        Analyze the complete uploaded resume.
         """
 
-        relevant_chunks = self.retriever.retrieve(
-            query="""
-            Analyze the complete resume including skills,
-            education, projects, experience, strengths,
-            weaknesses, ATS compatibility and improvements.
-            """,
-            top_k=10
-        )
+        # Get ALL resume chunks instead of semantic search
+        resume_chunks = self.vector_store.get_all_documents()
 
-        if not relevant_chunks:
+        if not resume_chunks:
             return "No resume found. Please upload a resume first."
 
-        prompt = PromptBuilder.build_prompt(
-            query="""
-            You are an expert AI Resume Analyzer.
+        # Combine all resume chunks
+        resume_context = "\n\n".join(resume_chunks)
 
-            Analyze the candidate's resume and provide:
+        # Build dedicated analysis prompt
+        prompt = f"""
+You are an expert ATS Resume Analyzer and Career Advisor.
 
-            1. Overall Resume Score out of 100
-            2. Strengths
-            3. Weaknesses
-            4. Technical Skills
-            5. Skills to Improve
-            6. Recommended Job Roles
-            7. ATS Suggestions
-            8. Resume Improvement Suggestions
+Analyze the following complete resume carefully.
 
-            Be specific, honest, and professional.
-            """,
-            context_chunks=relevant_chunks
-        )
+RESUME:
+--------------------
+{resume_context}
+--------------------
+
+Provide a detailed analysis in the following format:
+
+## 1. Overall Resume Score
+Give a score out of 100 and briefly explain the score.
+
+## 2. Resume Strengths
+List the strongest parts of the resume.
+
+## 3. Resume Weaknesses
+Identify missing information, weak sections, or areas that need improvement.
+
+## 4. Technical Skills Identified
+List all technical skills found in the resume.
+
+## 5. Missing or Recommended Skills
+Suggest important skills based on the candidate's profile.
+
+## 6. Recommended Job Roles
+Suggest suitable job roles.
+
+## 7. ATS Analysis
+Explain how ATS-friendly the resume is and identify missing keywords.
+
+## 8. Project Analysis
+Evaluate the projects and suggest improvements.
+
+## 9. Resume Improvement Suggestions
+Give clear actionable suggestions to improve the resume.
+
+Important rules:
+- Only analyze information present in the resume.
+- Do not say "I couldn't find information" unless the resume genuinely lacks the information.
+- If something is missing, clearly mention that it is missing and suggest an improvement.
+- Be constructive and professional.
+"""
 
         response = self.gemini.generate_response(prompt)
 
